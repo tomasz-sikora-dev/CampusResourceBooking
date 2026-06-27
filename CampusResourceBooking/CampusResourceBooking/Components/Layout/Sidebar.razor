@@ -1,0 +1,23 @@
+@inject AppState AppState
+
+<MudDrawer Open="true" Variant="DrawerVariant.Responsive" Elevation="1" ClipMode="DrawerClipMode.Always">
+    <MudNavMenu Class="pt-4">
+        <NavItem Href="/" Icon="@Icons.Material.Filled.Home" Text="Start" />
+
+        @if (AppState.IsStudent)
+        {
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.overline" Class="px-4">Student</MudText>
+            <NavItem Href="/student/bookings" Icon="@Icons.Material.Filled.EventNote" Text="Moje rezerwacje" />
+            <NavItem Href="/student/new-booking" Icon="@Icons.Material.Filled.AddCircle" Text="Nowa rezerwacja" />
+        }
+
+        @if (AppState.IsAdministrator)
+        {
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.overline" Class="px-4">Administrator</MudText>
+            <NavItem Href="/admin/bookings" Icon="@Icons.Material.Filled.Rule" Text="Zgłoszenia" />
+            <NavItem Href="/admin/resources" Icon="@Icons.Material.Filled.MeetingRoom" Text="Zasoby" />
+        }
+    </MudNavMenu>
+</MudDrawer>

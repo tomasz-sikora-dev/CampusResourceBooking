@@ -1,0 +1,46 @@
+@page "/"
+@rendermode InteractiveServer
+@inject AppState AppState
+
+<PageTitle>CampusResourceBooking</PageTitle>
+
+<MudGrid>
+    <MudItem xs="12" md="8">
+        <MudPaper Class="pa-8" Elevation="1">
+            <MudText Typo="Typo.h3" Class="mb-4">Rezerwacje zasobów kampusowych</MudText>
+            <MudText Typo="Typo.body1" Class="mb-6">
+                Aplikacja obsługuje zgłaszanie, akceptację i monitorowanie rezerwacji sal, laboratoriów,
+                pracowni oraz sprzętu dostępnego na kampusie.
+            </MudText>
+            @if (!AppState.IsAuthenticated)
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" Href="/login" StartIcon="@Icons.Material.Filled.Login">
+                    Zaloguj się
+                </MudButton>
+            }
+            else if (AppState.IsStudent)
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" Href="/student/new-booking" StartIcon="@Icons.Material.Filled.AddCircle">
+                    Utwórz rezerwację
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" Href="/admin/bookings" StartIcon="@Icons.Material.Filled.Rule">
+                    Przejdź do zgłoszeń
+                </MudButton>
+            }
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-6" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-3">Proces</MudText>
+            <MudList T="string" Dense="true">
+                <MudListItem Icon="@Icons.Material.Filled.Search">Student wybiera zasób i termin.</MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.Send">System wysyła zgłoszenie.</MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.Verified">Administrator akceptuje albo odrzuca.</MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.PictureAsPdf">Po akceptacji można pobrać potwierdzenie PDF.</MudListItem>
+            </MudList>
+        </MudPaper>
+    </MudItem>
+</MudGrid>

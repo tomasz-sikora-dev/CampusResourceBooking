@@ -1,0 +1,7 @@
+<MudNavLink Href="@Href" Icon="@Icon" Match="NavLinkMatch.Prefix">@Text</MudNavLink>
+
+@code {
+    [Parameter, EditorRequired] public string Href { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Icon { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Text { get; set; } = string.Empty;
+}

@@ -1,0 +1,92 @@
+@page "/student/new-booking"
+@rendermode InteractiveServer
+@inject AppState AppState
+@inject ResourceService ResourceService
+@inject BookingService BookingService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Nowa rezerwacja</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Nowa rezerwacja</MudText>
+
+@if (!AppState.IsStudent || AppState.UserId is null)
+{
+    <MudAlert Severity="Severity.Warning">Zaloguj się jako student.</MudAlert>
+}
+else if (resources is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudPaper Class="pa-6" Elevation="1">
+        <EditForm Model="model" OnValidSubmit="CreateAsync">
+            <DataAnnotationsValidator />
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudSelect @bind-Value="model.ResourceId" Label="Zasób" Variant="Variant.Outlined" For="() => model.ResourceId">
+                        @foreach (var resource in resources)
+                        {
+                            <MudSelectItem Value="@resource.ResourceId">@resource.Name (@resource.Location, @resource.Capacity osób)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="model.Purpose" Label="Cel" Variant="Variant.Outlined" For="() => model.Purpose" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudDatePicker @bind-Date="model.Date" Label="Data" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTimePicker @bind-Time="model.StartsAt" Label="Od" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTimePicker @bind-Time="model.EndsAt" Label="Do" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.Notes" Label="Uwagi" Variant="Variant.Outlined" Lines="4" />
+                </MudItem>
+            </MudGrid>
+            <MudStack Row="true" Class="mt-5">
+                <MudButton ButtonType="ButtonType.Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="isBusy">Wyślij zgłoszenie</MudButton>
+                <MudButton Href="/student/bookings" Variant="Variant.Text">Anuluj</MudButton>
+            </MudStack>
+        </EditForm>
+    </MudPaper>
+}
+
+@code {
+    private readonly BookingFormModel model = new();
+    private List<Resource>? resources;
+    private bool isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AppState.UserId is null)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        resources = await ResourceService.GetActiveResourcesAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        if (AppState.UserId is null)
+        {
+            return;
+        }
+
+        isBusy = true;
+        var result = await BookingService.CreateBookingAsync(AppState.UserId.Value, model);
+        isBusy = false;
+
+        Snackbar.Add(result.Message, result.IsSuccess ? Severity.Success : Severity.Error);
+        if (result.IsSuccess)
+        {
+            Navigation.NavigateTo("/student/bookings");
+        }
+    }
+}

@@ -1,0 +1,37 @@
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@Title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="Comment" Label="Komentarz" Lines="4" Variant="Variant.Outlined" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">Anuluj</MudButton>
+        <MudButton Color="@ButtonColor" Variant="Variant.Filled" OnClick="Submit">Zapisz decyzję</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public int BookingId { get; set; }
+    [Parameter] public BookingStatus Status { get; set; }
+
+    private string? Comment { get; set; }
+    private string Title => Status == BookingStatus.Approved ? "Akceptacja rezerwacji" : "Odrzucenie rezerwacji";
+    private Color ButtonColor => Status == BookingStatus.Approved ? Color.Success : Color.Error;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        var decision = new BookingDecisionModel
+        {
+            BookingId = BookingId,
+            Status = Status,
+            Comment = Comment
+        };
+
+        MudDialog.Close(DialogResult.Ok(decision));
+    }
+}

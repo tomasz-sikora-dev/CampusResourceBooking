@@ -1,0 +1,16 @@
+@inject AppState AppState
+@inject NavigationManager Navigation
+
+<MudAppBar Elevation="1" Color="Color.Primary">
+    <MudText Typo="Typo.h6" Class="font-weight-bold">CampusResourceBooking</MudText>
+    <MudSpacer />
+    @if (AppState.IsAuthenticated)
+    {
+        <MudText Class="me-4">@AppState.DisplayName</MudText>
+        <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Href="/logout">Wyloguj</MudButton>
+    }
+    else
+    {
+        <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Href="/login">Zaloguj</MudButton>
+    }
+</MudAppBar>

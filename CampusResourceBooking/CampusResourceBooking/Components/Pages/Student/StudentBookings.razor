@@ -1,0 +1,87 @@
+@page "/student/bookings"
+@rendermode InteractiveServer
+@inject AppState AppState
+@inject BookingService BookingService
+@inject StatusInfoProvider StatusInfoProvider
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Moje rezerwacje</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Moje rezerwacje</MudText>
+    <MudSpacer />
+    <MudButton Href="/student/new-booking" Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.AddCircle">Nowa</MudButton>
+</MudStack>
+
+@if (!AppState.IsStudent || AppState.UserId is null)
+{
+    <MudAlert Severity="Severity.Warning">Zaloguj się jako student.</MudAlert>
+}
+else if (bookings is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudTable Items="bookings" Hover="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Zasób</MudTh>
+            <MudTh>Termin</MudTh>
+            <MudTh>Cel</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Zasób">@context.Resource?.Name</MudTd>
+            <MudTd DataLabel="Termin">@context.StartsAt.ToString("yyyy-MM-dd HH:mm") - @context.EndsAt.ToString("HH:mm")</MudTd>
+            <MudTd DataLabel="Cel">@context.Purpose</MudTd>
+            <MudTd DataLabel="Status">
+                @{ var status = StatusInfoProvider.Get(context.Status); }
+                <MudChip T="string" Color="@status.Color" Icon="@status.Icon" Size="Size.Small">@status.Label</MudChip>
+            </MudTd>
+            <MudTd>
+                <MudButton Size="Size.Small" Variant="Variant.Text" Href="@($"/student/bookings/{context.BookingId}")">Szczegóły</MudButton>
+                @if (context.Status is BookingStatus.Submitted or BookingStatus.Approved)
+                {
+                    <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text" OnClick="() => CancelAsync(context.BookingId)">Anuluj</MudButton>
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>Brak rezerwacji.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+}
+
+@code {
+    private List<Booking>? bookings;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AppState.UserId is null)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadBookingsAsync();
+    }
+
+    private async Task LoadBookingsAsync()
+    {
+        bookings = await BookingService.GetBookingsAsync(new BookingFilter { RequesterId = AppState.UserId });
+    }
+
+    private async Task CancelAsync(int bookingId)
+    {
+        if (AppState.UserId is null)
+        {
+            return;
+        }
+
+        var result = await BookingService.CancelAsync(bookingId, AppState.UserId.Value);
+        Snackbar.Add(result.Message, result.IsSuccess ? Severity.Success : Severity.Error);
+        await LoadBookingsAsync();
+    }
+}

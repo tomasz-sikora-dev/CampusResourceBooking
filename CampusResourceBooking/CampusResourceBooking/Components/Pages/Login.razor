@@ -1,0 +1,59 @@
+@page "/login"
+@rendermode InteractiveServer
+@inject IdentityService IdentityService
+@inject AppState AppState
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Logowanie</PageTitle>
+
+<MudGrid Justify="Justify.Center">
+    <MudItem xs="12" sm="8" md="5">
+        <MudPaper Class="pa-6" Elevation="2">
+            <MudText Typo="Typo.h4" Class="mb-4">Logowanie</MudText>
+            <EditForm Model="loginModel" OnValidSubmit="SignInAsync">
+                <DataAnnotationsValidator />
+                <MudTextField @bind-Value="loginModel.Email" Label="Email" Variant="Variant.Outlined" For="() => loginModel.Email" />
+                <MudTextField @bind-Value="loginModel.Password" Label="Hasło" Variant="Variant.Outlined" InputType="InputType.Password" For="() => loginModel.Password" Class="mt-3" />
+                <MudButton ButtonType="ButtonType.Submit" Color="Color.Primary" Variant="Variant.Filled" FullWidth="true" Class="mt-5" Disabled="isBusy">
+                    Zaloguj
+                </MudButton>
+            </EditForm>
+            <MudAlert Severity="Severity.Info" Class="mt-4">
+                Demo: admin@campus.local / admin123 albo student@campus.local / student123
+            </MudAlert>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private readonly LoginModel loginModel = new();
+    private bool isBusy;
+
+    private async Task SignInAsync()
+    {
+        isBusy = true;
+        var result = await IdentityService.SignInAsync(loginModel.Email, loginModel.Password);
+        isBusy = false;
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            Snackbar.Add(result.Message, Severity.Error);
+            return;
+        }
+
+        AppState.SignIn(result.Value);
+        Snackbar.Add(result.Message, Severity.Success);
+        Navigation.NavigateTo(result.Value.Role == UserRole.Administrator ? "/admin/bookings" : "/student/bookings");
+    }
+
+    private sealed class LoginModel
+    {
+        [Required(ErrorMessage = "Podaj email.")]
+        [EmailAddress(ErrorMessage = "Podaj poprawny email.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Podaj hasło.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,73 @@
+@page "/student/bookings/{BookingId:int}"
+@rendermode InteractiveServer
+@inject AppState AppState
+@inject BookingService BookingService
+@inject BookingPdfService PdfService
+@inject StatusInfoProvider StatusInfoProvider
+@inject IJSRuntime JsRuntime
+@inject NavigationManager Navigation
+
+<PageTitle>Szczegóły rezerwacji</PageTitle>
+
+@if (booking is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (booking.RequestedByUserId != AppState.UserId)
+{
+    <MudAlert Severity="Severity.Error">Brak dostępu do tej rezerwacji.</MudAlert>
+}
+else
+{
+    var status = StatusInfoProvider.Get(booking.Status);
+    <MudPaper Class="pa-6" Elevation="1">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudText Typo="Typo.h4">Rezerwacja #@booking.BookingId</MudText>
+            <MudSpacer />
+            <MudChip T="string" Color="@status.Color" Icon="@status.Icon">@status.Label</MudChip>
+        </MudStack>
+        <MudGrid>
+            <MudItem xs="12" md="6"><b>Zasób:</b> @booking.Resource?.Name</MudItem>
+            <MudItem xs="12" md="6"><b>Lokalizacja:</b> @booking.Resource?.Location</MudItem>
+            <MudItem xs="12" md="6"><b>Termin:</b> @booking.StartsAt.ToString("yyyy-MM-dd HH:mm") - @booking.EndsAt.ToString("HH:mm")</MudItem>
+            <MudItem xs="12" md="6"><b>Cel:</b> @booking.Purpose</MudItem>
+            <MudItem xs="12"><b>Uwagi:</b> @(booking.Notes ?? "-")</MudItem>
+            <MudItem xs="12"><b>Komentarz decyzji:</b> @(booking.DecisionComment ?? "-")</MudItem>
+        </MudGrid>
+        <MudStack Row="true" Class="mt-5">
+            <MudButton Href="/student/bookings" Variant="Variant.Text">Wróć</MudButton>
+            @if (booking.Status == BookingStatus.Approved)
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="DownloadPdfAsync">Pobierz PDF</MudButton>
+            }
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public int BookingId { get; set; }
+    private Booking? booking;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AppState.UserId is null)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        booking = await BookingService.GetBookingAsync(BookingId);
+    }
+
+    private async Task DownloadPdfAsync()
+    {
+        if (booking is null)
+        {
+            return;
+        }
+
+        var bytes = PdfService.GenerateConfirmation(booking);
+        var base64 = Convert.ToBase64String(bytes);
+        await JsRuntime.InvokeVoidAsync("downloadFileFromBase64", $"booking-{booking.BookingId}.pdf", "application/pdf", base64);
+    }
+}

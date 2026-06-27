@@ -1,0 +1,89 @@
+@page "/admin/resources"
+@rendermode InteractiveServer
+@inject AppState AppState
+@inject ResourceService ResourceService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Zasoby</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Zasoby kampusu</MudText>
+
+@if (!AppState.IsAdministrator)
+{
+    <MudAlert Severity="Severity.Warning">Zaloguj się jako administrator.</MudAlert>
+}
+else if (resources is null || usage is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" lg="8">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.h6" Class="mb-3">Lista zasobów</MudText>
+                <MudTable Items="resources" Hover="true" Dense="true">
+                    <HeaderContent>
+                        <MudTh>Nazwa</MudTh>
+                        <MudTh>Kategoria</MudTh>
+                        <MudTh>Lokalizacja</MudTh>
+                        <MudTh>Pojemność</MudTh>
+                        <MudTh>Status</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Name</MudTd>
+                        <MudTd>@context.Category?.Name</MudTd>
+                        <MudTd>@context.Location</MudTd>
+                        <MudTd>@context.Capacity</MudTd>
+                        <MudTd>
+                            <MudSwitch T="bool" Value="context.IsActive" ValueChanged="value => ToggleAsync(context.ResourceId, value)" Color="Color.Success" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" lg="4">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.h6" Class="mb-3">Wykorzystanie</MudText>
+                @foreach (var item in usage)
+                {
+                    <MudPaper Class="pa-3 mb-2" Outlined="true">
+                        <MudText Typo="Typo.subtitle2">@item.ResourceName</MudText>
+                        <MudText Typo="Typo.body2">Zatwierdzone: @item.ApprovedBookings, oczekujące: @item.PendingBookings</MudText>
+                        <MudText Typo="Typo.caption">Najbliższa: @(item.NearestBooking?.ToString("yyyy-MM-dd HH:mm") ?? "brak")</MudText>
+                    </MudPaper>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private List<Resource>? resources;
+    private List<VResourceUsage>? usage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AppState.UserId is null)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        resources = await ResourceService.GetResourcesAsync();
+        usage = await ResourceService.GetUsageSummaryAsync();
+    }
+
+    private async Task ToggleAsync(int resourceId, bool isActive)
+    {
+        await ResourceService.ToggleAvailabilityAsync(resourceId, isActive);
+        Snackbar.Add("Zmieniono dostępność zasobu.", Severity.Success);
+        await LoadAsync();
+    }
+}

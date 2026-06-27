@@ -1,0 +1,104 @@
+@page "/admin/bookings"
+@rendermode InteractiveServer
+@inject AppState AppState
+@inject BookingService BookingService
+@inject StatusInfoProvider StatusInfoProvider
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Administracja rezerwacjami</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Zgłoszenia rezerwacji</MudText>
+
+@if (!AppState.IsAdministrator || AppState.UserId is null)
+{
+    <MudAlert Severity="Severity.Warning">Zaloguj się jako administrator.</MudAlert>
+}
+else if (bookings is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudSelect T="BookingStatus?" @bind-Value="selectedStatus" Label="Status" Clearable="true" Variant="Variant.Outlined" Class="max-width-300">
+            <MudSelectItem T="BookingStatus?" Value="@((BookingStatus?)BookingStatus.Submitted)">Oczekujące</MudSelectItem>
+            <MudSelectItem T="BookingStatus?" Value="@((BookingStatus?)BookingStatus.Approved)">Zatwierdzone</MudSelectItem>
+            <MudSelectItem T="BookingStatus?" Value="@((BookingStatus?)BookingStatus.Rejected)">Odrzucone</MudSelectItem>
+            <MudSelectItem T="BookingStatus?" Value="@((BookingStatus?)BookingStatus.Cancelled)">Anulowane</MudSelectItem>
+        </MudSelect>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="LoadBookingsAsync" Class="mt-3">Filtruj</MudButton>
+    </MudPaper>
+
+    <MudTable Items="bookings" Hover="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Zasób</MudTh>
+            <MudTh>Rezerwujący</MudTh>
+            <MudTh>Termin</MudTh>
+            <MudTh>Cel</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Zasób">@context.Resource?.Name</MudTd>
+            <MudTd DataLabel="Rezerwujący">@context.RequestedBy?.FullName</MudTd>
+            <MudTd DataLabel="Termin">@context.StartsAt.ToString("yyyy-MM-dd HH:mm") - @context.EndsAt.ToString("HH:mm")</MudTd>
+            <MudTd DataLabel="Cel">@context.Purpose</MudTd>
+            <MudTd DataLabel="Status">
+                @{ var status = StatusInfoProvider.Get(context.Status); }
+                <MudChip T="string" Color="@status.Color" Icon="@status.Icon" Size="Size.Small">@status.Label</MudChip>
+            </MudTd>
+            <MudTd>
+                @if (context.Status == BookingStatus.Submitted)
+                {
+                    <MudButton Size="Size.Small" Color="Color.Success" Variant="Variant.Text" OnClick="() => OpenDecisionDialogAsync(context.BookingId, BookingStatus.Approved)">Akceptuj</MudButton>
+                    <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text" OnClick="() => OpenDecisionDialogAsync(context.BookingId, BookingStatus.Rejected)">Odrzuć</MudButton>
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>Brak zgłoszeń.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+}
+
+@code {
+    private List<Booking>? bookings;
+    private BookingStatus? selectedStatus = BookingStatus.Submitted;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AppState.UserId is null)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadBookingsAsync();
+    }
+
+    private async Task LoadBookingsAsync()
+    {
+        bookings = await BookingService.GetBookingsAsync(new BookingFilter { Status = selectedStatus });
+    }
+
+    private async Task OpenDecisionDialogAsync(int bookingId, BookingStatus status)
+    {
+        var parameters = new DialogParameters
+        {
+            [nameof(BookingDecisionDialog.BookingId)] = bookingId,
+            [nameof(BookingDecisionDialog.Status)] = status
+        };
+
+        var dialog = await DialogService.ShowAsync<BookingDecisionDialog>(status == BookingStatus.Approved ? "Akceptacja" : "Odrzucenie", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is BookingDecisionModel decision && AppState.UserId is not null)
+        {
+            var serviceResult = await BookingService.DecideAsync(decision, AppState.UserId.Value);
+            Snackbar.Add(serviceResult.Message, serviceResult.IsSuccess ? Severity.Success : Severity.Error);
+            await LoadBookingsAsync();
+        }
+    }
+}
